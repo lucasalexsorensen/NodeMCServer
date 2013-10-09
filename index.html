@@ -1,0 +1,108 @@
+<head>
+<title>Minecraft Server Control Panel</title>
+
+<link href="css/sitestyles.css" rel="stylesheet" type="text/css">
+<link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/bootbox.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+var isServer = false;
+
+var socket = io.connect("/", {
+			"reconnect" : true,
+			"reconnection delay" : 500,
+			"max reconnection attempts" : 10
+		});
+
+function startServer(name){
+	socket.emit('start_server', name)
+	
+	socket.on('fail', function(data){
+		socket.emit('command', 'stop');
+		bootbox.alert("A Minecraft server is already running, it will be shut down now. Please wait a few seconds and try again");
+	});
+	socket.on('server_granted', function(data){
+		// Transforming client into console
+		if(data == true){
+			isServer = true;
+			var bodywrapperObj = document.getElementById('bodywrapper')
+			var serverwrapperObj = document.getElementById('serverwrapper')
+			var oldHTML = bodywrapperObj.innerHTML;
+			serverwrapperObj.innerHTML = '<div id="serverheader"><h2 class="title">Server console:</h2></div><div id="console"><textarea id="consolefield" readonly></textarea><p id="commandlineheading">Type Minecraft server command (type /help for commands):</p><input type="text" id="commandline" style="height:26px;" onKeyPress="submitenter(this, event)"/></div>';
+			serverwrapperObj.style.width = "550px";
+			serverwrapperObj.style.height = "378px";
+			
+		}
+	});
+}
+
+function closeServer(){
+	
+}
+
+function submitCommand(){
+	cmdfield = document.getElementById('commandline');
+	cmd = cmdfield.value;
+	cmdfield.value = "";
+	socket.emit('command', cmd);
+}
+
+function submitenter(myfield,e)
+{
+var keycode;
+if (window.event) keycode = window.event.keyCode;
+else if (e) keycode = e.which;
+else return true;
+if (keycode == 13)
+   {
+   submitCommand();
+   return false;
+   }
+else
+   return true;
+}
+
+socket.on('console', function(data){
+	if (isServer){
+		var textarea = document.getElementById('consolefield')
+		var oldtxt = textarea.innerHTML;
+		var newtxt = oldtxt + data + "\n";
+		textarea.innerHTML = newtxt;
+		textarea.scrollTop = textarea.scrollHeight;
+	}
+});
+
+function testIfServersRunning(){
+	socket.emit("get_status")
+}
+
+socket.on('status', function(data){
+	if(data !== null){
+		console.log("SERVER ALREADY RUNNING: " + data)
+	}
+});
+
+</script>
+</head>
+<body onload="testIfServersRunning()">
+<div id="bodywrapper">
+
+<div id="header">
+<h1 class="title">Minecraft Server Control Panel</h1>
+</div>
+
+<div id="serverwrapper">
+<div id="serverheader">
+<h2 class="title">Server list:</h2> 
+</div>
+<ul>
+<li style="margin-top:25px;"><button type="button" class="btn btn-success" onclick="startServer('FTB01')">FTB Server (Direwolf20)</button></li>
+<li><button type="button" class="btn btn-success" onclick="startServer('FTB02')">FTB Server (Mindcrack)</button></li>
+<li><button type="button" class="btn btn-success" onclick="startServer('VANILLA01')">Vanilla Server</button></li>
+<ul>
+
+</div>
+</body>
+</html>
